@@ -155,13 +155,6 @@ async def inference(req: TTSRequest):
 
     if req.stream:
         def generate_stream():
-            # 1. 初始化 MP3 编码器
-            encoder = lameenc.Encoder()
-            encoder.set_bit_rate(128)
-            encoder.set_in_sample_rate(24000)  # CosyVoice 24KHz 采样率
-            encoder.set_channels(1)
-            encoder.set_quality(2)
-
             try:
                 for chunk in app.state.cosyvoice.stream(
                     tts_text=prompt, 
@@ -176,21 +169,15 @@ async def inference(req: TTSRequest):
                     # 转换格式：Tensor -> float32 -> int16
                     float_data = audio_tensor.numpy().flatten()
                     int16_data = (float_data * 32767).clip(-32768, 32767).astype(np.int16)
-                    
-                    # 编码为 MP3 字节
-                    mp3_chunk = encoder.encode(int16_data.tobytes())
-                    if mp3_chunk:
-                        yield bytes(mp3_chunk)
-                
-                # 冲刷编码器剩余数据
-                last_chunk = encoder.flush()
-                if last_chunk:
-                    yield bytes(last_chunk)
+
+                    # 输出字节
+                    yield int16_data.tobytes()
                     
             except Exception as e:
                 print(f"Streaming error: {e}")
 
-        return StreamingResponse(generate_stream(), media_type="audio/mpeg")
+        # 修改响应
+        return StreamingResponse(generate_stream(), media_type="audio/l16; rate=24000")
 
     else:
         # 非流式处理逻辑

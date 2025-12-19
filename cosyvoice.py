@@ -89,15 +89,15 @@ class CosyVoice:
                 start_time = time.time()
 
     def stream(self, tts_text, spk_id, stream=True, speed=1.0):
-            for i in self.frontend.text_normalize(tts_text, split=True):
-                # print(f"i = {i}")
+        for i in self.frontend.text_normalize(tts_text, split=True):
+            # print(f"i = {i}")
+            start_time = time.time()
+            model_input = self.frontend.frontend_sft(i, spk_id)
+            for model_output in self.model.tts(**model_input, stream=stream, speed=speed):
+                speech_len = model_output['tts_speech'].shape[1] / self.sample_rate
+                logging.info('yield speech len {}, rtf {}'.format(speech_len, (time.time() - start_time) / speech_len))
+                yield model_output
                 start_time = time.time()
-                model_input = self.frontend.frontend_sft(i, spk_id)
-                for model_output in self.model.tts(**model_input, stream=stream, speed=speed):
-                    speech_len = model_output['tts_speech'].shape[1] / self.sample_rate
-                    logging.info('yield speech len {}, rtf {}'.format(speech_len, (time.time() - start_time) / speech_len))
-                    yield model_output
-                    start_time = time.time()
 
     def inference_zero_shot(self, tts_text, prompt_text, prompt_wav, zero_shot_spk_id='', stream=False, speed=1.0, text_frontend=True):
         prompt_text = self.frontend.text_normalize(prompt_text, split=False, text_frontend=text_frontend)
